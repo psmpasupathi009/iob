@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  USER
+}
+
+enum OtpPurpose {
+  setup
+  forgot_pin
+}
+
+enum TxnType {
+  CR
+  DR
+}
+
+model User {
+  id                String        @id @default(auto()) @map("_id") @db.ObjectId
+  username          String        @unique
+  mobile            String        @unique
+  name              String
+  role              UserRole
+  pinHash           String?
+  balance           Float         @default(0)
+  accountNumber     String        @unique
+  lastLoginAt       DateTime?
+  previousLoginAt   DateTime?
+  failedPinAttempts Int           @default(0)
+  pinLockedUntil    DateTime?
+  sessionVersion    Int           @default(0)
+  isActive          Boolean       @default(true)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  transactions      Transaction[]
+}
+
+model Transaction {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id])
+  date        DateTime @default(now())
+  description String
+  amount      Float
+  type        TxnType
+  createdAt   DateTime @default(now())
+
+  @@index([userId, date])
+}
+
+model OtpSession {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  mobile    String
+  sessionId String
+  purpose   OtpPurpose
+  expiresAt DateTime
+  verified  Boolean    @default(false)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([mobile, purpose])
+  @@index([expiresAt])
+}
+
+model ConsumedOtpProof {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  jti       String   @unique
+  mobile    String
+  purpose   String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+model RateLimit {
+  id      String   @id @default(auto()) @map("_id") @db.ObjectId
+  key     String   @unique
+  count   Int
+  resetAt DateTime
+}

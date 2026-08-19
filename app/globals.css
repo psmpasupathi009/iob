@@ -1,26 +1,88 @@
 @import "tailwindcss";
 
 :root {
+  --iob-teal: #00829c;
+  --iob-header: #00829c;
+  --iob-nav: #007a94;
+  --iob-navy: #0a4d8c;
+  --iob-cyan: #00a3ad;
+  --iob-tile: #17a2b8;
+  --iob-page: #eef2f5;
+  --iob-ticker: #c41230;
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #1a1a1a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-iob: #00829c;
+  --color-iob-dark: #007a94;
+  --color-iob-navy: #0a4d8c;
+  --color-iob-cyan: #00a3ad;
+  --color-iob-tile: #17a2b8;
+  --color-iob-page: #eef2f5;
+  --font-sans: "Roboto", Arial, Helvetica, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+html,
+body {
+  background: #fff;
+  color: #1a1a1a;
+  font-family: "Roboto", Arial, Helvetica, sans-serif;
+}
+
+.iob-header {
+  background: #00829c;
+}
+
+.iob-nav {
+  background: #00829c;
+}
+
+.iob-header-login {
+  background: linear-gradient(90deg, #006bb8 0%, #1a9bb8 48%, #2fc0b0 100%);
+}
+
+.iob-hero-login {
+  background: linear-gradient(90deg, #0475bb 0%, #1aa3b8 52%, #32c3b0 100%);
+}
+
+.iob-ticker {
+  color: #c41230;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.iob-marquee {
+  display: inline-block;
+  animation: iob-marquee 22s linear infinite;
+}
+
+@keyframes iob-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.iob-input {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #c8c8c8;
+  border-radius: 0;
+  background: transparent;
+  padding: 4px 34px 5px 0;
+  font-size: 13px;
+  line-height: 1.3;
+  height: 28px;
+  outline: none;
+}
+.iob-input:focus {
+  border-bottom-color: #00829c;
+}
+.iob-input::placeholder {
+  color: #9a9a9a;
 }
