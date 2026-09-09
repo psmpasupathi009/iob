@@ -21,6 +21,19 @@ type Txn = {
   description: string;
   amount: number;
   type: "CR" | "DR";
+  debit: number | null;
+  credit: number | null;
+  carryingAmount: number;
+};
+
+type Statement = {
+  accountLabel: string;
+  from: string;
+  to: string;
+  openingBalance: number;
+  closingBalance: number;
+  balance: number;
+  transactions: Txn[];
 };
 
 type Dash = {
@@ -56,6 +69,9 @@ export function DashboardClient() {
   const [dash, setDash] = useState<Dash | null>(null);
   const [showBal, setShowBal] = useState(false);
   const [tab, setTab] = useState<"txn" | "summary">("txn");
+  const [showStatement, setShowStatement] = useState(false);
+  const [statement, setStatement] = useState<Statement | null>(null);
+  const [statementLoading, setStatementLoading] = useState(false);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -70,6 +86,16 @@ export function DashboardClient() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function loadStatement() {
+    setStatementLoading(true);
+    const res = await apiJson<Statement>("/api/account/statement");
+    setStatementLoading(false);
+    if (res.ok && res.data) {
+      setStatement(res.data);
+      setShowStatement(true);
+    }
+  }
 
   if (error) {
     return <p className="p-8 text-red-600">{error}</p>;
@@ -184,42 +210,44 @@ export function DashboardClient() {
                   </p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                <table className="w-full min-w-[480px] text-left text-sm">
-                  <thead>
-                    <tr className="border-b text-gray-500">
-                      <th className="py-2 font-medium">Date</th>
-                      <th className="font-medium">Description</th>
-                      <th className="text-right font-medium">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dash.transactions.length === 0 ? (
-                      <tr>
-                        <td colSpan={3} className="py-6 text-center text-gray-400">
-                          No transactions yet
-                        </td>
-                      </tr>
-                    ) : (
-                      dash.transactions.map((t) => (
-                        <tr key={t.id} className="border-b border-gray-100">
-                          <td className="py-2">{t.dateLabel}</td>
-                          <td>{t.description}</td>
-                          <td
-                            className={`text-right font-semibold ${
-                              t.type === "DR" ? "text-red-600" : "text-green-600"
-                            }`}
-                          >
-                            ₹ {inr(t.amount)} {t.type === "DR" ? "Dr" : "Cr"}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-                </div>
+                <StatementTable rows={dash.transactions} />
               )}
-              <p className="mt-3 text-right text-sm text-[#0b6a9a]">View detailed statement</p>
+              <button
+                type="button"
+                onClick={() => void loadStatement()}
+                className="mt-3 block w-full text-right text-sm text-[#0b6a9a] underline"
+              >
+                {statementLoading ? "Loading statement…" : "View detailed statement (1 year)"}
+              </button>
+              {showStatement && statement ? (
+                <div className="mt-4 rounded border border-cyan-100 bg-slate-50 p-3">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <div>
+                      <p className="font-semibold text-iob-navy">Account statement — last 1 year</p>
+                      <p className="text-xs text-gray-500">{statement.accountLabel}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowStatement(false)}
+                      className="text-xs text-gray-500 underline"
+                    >
+                      Close
+                    </button>
+                  </div>
+                  <div className="mb-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+                    <p>
+                      Opening: <strong>₹ {inr(statement.openingBalance)}</strong>
+                    </p>
+                    <p>
+                      Closing: <strong>₹ {inr(statement.closingBalance)}</strong>
+                    </p>
+                    <p>
+                      Current balance: <strong className="text-iob-navy">₹ {inr(statement.balance)}</strong>
+                    </p>
+                  </div>
+                  <StatementTable rows={[...statement.transactions].reverse()} full />
+                </div>
+              ) : null}
             </div>
 
             {isAdmin ? <AdminPanel onChanged={() => void load()} /> : null}
@@ -297,6 +325,49 @@ function inr(n: number) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(n);
+}
+
+function StatementTable({ rows, full }: { rows: Txn[]; full?: boolean }) {
+  return (
+    <div className={`overflow-x-auto ${full ? "max-h-[420px] overflow-y-auto" : ""}`}>
+      <table className="w-full min-w-[560px] text-left text-sm">
+        <thead className="sticky top-0 bg-white">
+          <tr className="border-b text-gray-500">
+            <th className="py-2 font-medium">Date</th>
+            <th className="font-medium">Particulars</th>
+            <th className="text-right font-medium">Withdrawals (Dr)</th>
+            <th className="text-right font-medium">Deposits (Cr)</th>
+            <th className="text-right font-medium">Balance</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={5} className="py-6 text-center text-gray-400">
+                No transactions yet
+              </td>
+            </tr>
+          ) : (
+            rows.map((t) => (
+              <tr key={t.id} className="border-b border-gray-100">
+                <td className="py-2 whitespace-nowrap">{t.dateLabel}</td>
+                <td>{t.description}</td>
+                <td className="text-right text-red-600">
+                  {t.debit != null ? `₹ ${inr(t.debit)}` : "—"}
+                </td>
+                <td className="text-right text-green-600">
+                  {t.credit != null ? `₹ ${inr(t.credit)}` : "—"}
+                </td>
+                <td className="text-right font-semibold text-iob-navy">
+                  ₹ {inr(t.carryingAmount)}
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 function SummaryTile({

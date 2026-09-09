@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser, toPublicUser } from "@/lib/auth/session";
 import { jsonFail, jsonOk } from "@/lib/api/response";
+import { computeStatementRows } from "@/lib/statement";
 
 function formatLastLogin(d: Date | null): string {
   if (!d) return "First login";
@@ -19,29 +20,29 @@ export async function GET(request: Request) {
   const user = await getCurrentUser(request);
   if (!user) return jsonFail("UNAUTHORIZED", "Please login", 401);
 
-  const transactions = await prisma.transaction.findMany({
+  const allTransactions = await prisma.transaction.findMany({
     where: { userId: user.id },
-    orderBy: { date: "desc" },
-    take: 25,
+    orderBy: { date: "asc" },
   });
+
+  const withCarrying = computeStatementRows(allTransactions, 0);
+  const recent = withCarrying.slice(-25).reverse();
 
   return jsonOk({
     user: toPublicUser(user),
     lastLoginLabel: formatLastLogin(user.previousLoginAt ?? user.lastLoginAt),
     accountLabel: `${user.accountNumber}-${user.name.replace(/\s+/g, " ").toUpperCase()}`,
     balance: user.balance,
-    transactions: transactions.map((t) => ({
+    transactions: recent.map((t) => ({
       id: t.id,
       date: t.date.toISOString(),
-      dateLabel: new Intl.DateTimeFormat("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        timeZone: "Asia/Kolkata",
-      }).format(t.date),
+      dateLabel: t.dateLabel,
       description: t.description,
       amount: t.amount,
       type: t.type,
+      debit: t.debit,
+      credit: t.credit,
+      carryingAmount: t.carryingAmount,
     })),
   });
 }

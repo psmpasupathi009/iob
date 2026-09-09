@@ -56,7 +56,7 @@ export function AdminPanel({ onChanged }: { onChanged: () => void }) {
       setErr(getErrorMessage(res.raw, "Could not create user"));
       return;
     }
-    setMsg("User created. They can login with User ID and PIN.");
+    setMsg("User created with 1-year statement. They can login with User ID and PIN.");
     setForm({ name: "", username: "", mobile: "", pin: "", balance: "" });
     await load();
     onChanged();

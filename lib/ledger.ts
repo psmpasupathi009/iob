@@ -7,6 +7,7 @@ export async function applyBalanceChange(input: {
   amount?: number;
   type?: TxnType;
   description: string;
+  date?: Date;
 }): Promise<{ balance: number }> {
   const user = await prisma.user.findUnique({ where: { id: input.userId } });
   if (!user) throw new Error("User not found");
@@ -43,6 +44,7 @@ export async function applyBalanceChange(input: {
         amount,
         type,
         description: input.description,
+        ...(input.date ? { date: input.date } : {}),
       },
     }),
   ]);

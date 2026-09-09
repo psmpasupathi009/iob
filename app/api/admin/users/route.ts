@@ -5,7 +5,7 @@ import { createUserSchema } from "@/lib/validations/auth.schema";
 import { hashPin } from "@/lib/auth/pin";
 import { normalizeMobile } from "@/lib/auth/mobile";
 import { generateAccountNumber } from "@/lib/money";
-import { applyBalanceChange } from "@/lib/ledger";
+import { seedYearStatement } from "@/lib/seed-statement";
 
 export async function GET(request: Request) {
   const admin = await requireAdmin(request);
@@ -90,17 +90,11 @@ export async function POST(request: Request) {
     },
   });
 
-  if (parsed.data.balance > 0) {
-    await applyBalanceChange({
-      userId: user.id,
-      newBalance: parsed.data.balance,
-      description: "Opening balance credited",
-    });
-  }
+  await seedYearStatement(user.id, parsed.data.balance);
 
   const fresh = await prisma.user.findUnique({ where: { id: user.id } });
   return jsonOk({
-    message: "User created",
+    message: "User created with 1-year statement",
     user: { ...toPublicUser(fresh!), pinSet: true },
   });
 }
